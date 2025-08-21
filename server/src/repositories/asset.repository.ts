@@ -137,6 +137,7 @@ export class AssetRepository {
               city: eb.ref('excluded.city'),
               livePhotoCID: eb.ref('excluded.livePhotoCID'),
               autoStackId: eb.ref('excluded.autoStackId'),
+              detail: eb.ref('excluded.detail'),
               state: eb.ref('excluded.state'),
               country: eb.ref('excluded.country'),
               make: eb.ref('excluded.make'),

@@ -98,6 +98,7 @@ export class MapRepository {
         'asset_exif.city',
         'asset_exif.state',
         'asset_exif.country',
+        'asset_exif.detail'
       ])
       .$narrowType<{ lat: NotNull; lon: NotNull }>()
       .$if(isArchived === true, (qb) =>
@@ -144,11 +145,7 @@ export class MapRepository {
 
     const {naver} = this.configRepository.getEnv();
 
-    console.log(naver)
-
     if(naver.id != undefined && naver.secret != undefined && checkInsideKorea(point)){
-
-
       const url = "https://maps.apigw.ntruss.com/map-reversegeocode/v2/gc";
       const params = new URLSearchParams({
         coords: `${point.longitude},${point.latitude}`,
@@ -171,15 +168,13 @@ export class MapRepository {
 
         const data = await response.json();
         const region = data.results[0].region;
-
-        console.log("Reverse Geocode Result:", data);
-
-        return {
+        const result = {
           country: "대한민국",
           state: region.area1.name,
           city: region.area2.name,
           detail: region.area3.name
         };
+        return result;
       }
       catch(ignored){
 
