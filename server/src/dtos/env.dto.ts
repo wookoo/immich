@@ -195,4 +195,12 @@ export class EnvDto {
   @IsString()
   @Optional()
   REDIS_URL?: string;
+  
+  @IsString()
+  @Optional()
+  NAVER_CLIENT_ID?: string;
+
+  @IsString()
+  @Optional()
+  NAVER_CLIENT_SECRET?: string;
 }

@@ -31,6 +31,7 @@ export interface ReverseGeocodeResult {
   country: string | null;
   state: string | null;
   city: string | null;
+  detail: string | null;
 }
 
 export interface MapMarker extends ReverseGeocodeResult {
@@ -141,6 +142,53 @@ export class MapRepository {
   async reverseGeocode(point: GeoPoint): Promise<ReverseGeocodeResult> {
     this.logger.debug(`Request: ${point.latitude},${point.longitude}`);
 
+    const {naver} = this.configRepository.getEnv();
+
+    console.log(naver)
+
+    if(naver.id != undefined && naver.secret != undefined && checkInsideKorea(point)){
+
+
+      const url = "https://maps.apigw.ntruss.com/map-reversegeocode/v2/gc";
+      const params = new URLSearchParams({
+        coords: `${point.longitude},${point.latitude}`,
+        output: "json",
+        orders: "legalcode",
+      });
+
+      try {
+        const response = await fetch(`${url}?${params.toString()}`, {
+          method: "GET",
+          headers: {
+            "x-ncp-apigw-api-key-id": `${naver.id}`,
+            "x-ncp-apigw-api-key": `${naver.secret}`,
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`Reverse geocode API failed: ${response.status}`);
+        }
+
+        const data = await response.json();
+        const region = data.results[0].region;
+
+        console.log("Reverse Geocode Result:", data);
+
+        return {
+          country: "대한민국",
+          state: region.area1.name,
+          city: region.area2.name,
+          detail: region.area3.name
+        };
+      }
+      catch(ignored){
+
+      }
+
+
+    }
+   
+
     const response = await this.db
       .selectFrom('geodata_places')
       .selectAll()
@@ -162,7 +210,7 @@ export class MapRepository {
       const country = getName(countryCode, 'en') ?? null;
       const state = admin1Name;
 
-      return { country, state, city };
+      return { country, state, city,detail:null };
     }
 
     this.logger.log(
@@ -181,7 +229,7 @@ export class MapRepository {
         `Empty response from database for natural earth country reverse geocoding lat: ${point.latitude}, lon: ${point.longitude}`,
       );
 
-      return { country: null, state: null, city: null };
+      return { country: null, state: null, city: null,detail:null };
     }
 
     this.logger.verboseFn(() => `Raw: ${JSON.stringify(ne_response, ['id', 'admin', 'admin_a3', 'type'], 2)}`);
@@ -190,8 +238,8 @@ export class MapRepository {
     const country = getName(admin_a3, 'en') ?? null;
     const state = null;
     const city = null;
-
-    return { country, state, city };
+    const detail = null;
+    return { country, state, city ,detail};
   }
 
   private async importNaturalEarthCountries() {
@@ -377,3 +425,44 @@ export class MapRepository {
     ]);
   }
 }
+
+
+
+const checkInsideKorea = (point:GeoPoint): boolean => {
+  const coordinateList = [
+  { latitude: 37.65974,  longitude: 124.972107 },  // 서해 북쪽
+  { latitude: 39.105648, longitude: 129.293848 }, // 동해 북쪽
+  { latitude: 37.477232, longitude: 131.597259 }, // 동해 쪽
+  { latitude: 34.744366, longitude: 129.259321 }, // 대마도 위쪽
+  { latitude: 33.81055,  longitude: 128.903499 }, // 남해 동쪽
+  { latitude: 32.599185, longitude: 125.157071 }, // 제주도 남쪽
+  { latitude: 34.458362, longitude: 124.150105 }, // 서해 남쪽
+];
+  const size = coordinateList.length;
+
+  if (size < 3) {
+    return false;
+  }
+
+  let isInner = false;
+  let followIndex = size - 1;
+
+  for (let cur = 0; cur < size; cur++) {
+    const curPos = coordinateList[cur];
+    const prevPos = coordinateList[followIndex];
+
+    if (
+      (curPos.longitude < point.longitude && prevPos.longitude >= point.longitude) ||
+      (prevPos.longitude < point.longitude && curPos.longitude >= point.longitude)
+    ) {
+
+      if (curPos.latitude + ((point.longitude - curPos.longitude) / (prevPos.longitude - curPos.longitude)) * (prevPos.latitude - curPos.latitude) < point.latitude) {
+        isInner = !isInner;
+      }
+    }
+
+    followIndex = cur;
+  }
+
+  return isInner;
+};

@@ -104,6 +104,11 @@ export interface EnvData {
 
   noColor: boolean;
   nodeVersion?: string;
+
+  naver :{
+    id? : string;
+    secret? : string;
+  }
 }
 
 const productionKeys = {
@@ -215,6 +220,13 @@ const getEnv = (): EnvData => {
     }
   }
 
+
+  let naver = {
+    id: dto.NAVER_CLIENT_ID || undefined,
+    secret: dto.NAVER_CLIENT_SECRET || undefined
+  };
+
+
   return {
     host: dto.IMMICH_HOST,
     port: dto.IMMICH_PORT || 2283,
@@ -320,6 +332,7 @@ const getEnv = (): EnvData => {
     workers,
 
     noColor: !!dto.NO_COLOR,
+    naver
   };
 };
 

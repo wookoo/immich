@@ -50,6 +50,9 @@ export class AssetExifTable {
   @Column({ type: 'double precision', nullable: true })
   longitude!: number | null;
 
+  @Column({ type: 'character varying', nullable: true})
+  detail!: string | null;
+
   @Column({ type: 'character varying', nullable: true, index: true })
   city!: string | null;
 

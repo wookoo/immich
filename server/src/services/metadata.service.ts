@@ -231,7 +231,7 @@ export class MetadataService extends BaseService {
     const dates = this.getDates(asset, exifTags, stats);
 
     const { width, height } = this.getImageDimensions(exifTags);
-    let geo: ReverseGeocodeResult = { country: null, state: null, city: null },
+    let geo: ReverseGeocodeResult = { country: null, state: null, city: null,detail: null },
       latitude: number | null = null,
       longitude: number | null = null;
     if (this.hasGeo(exifTags)) {
@@ -256,6 +256,7 @@ export class MetadataService extends BaseService {
       country: geo.country,
       state: geo.state,
       city: geo.city,
+      detail: geo.detail,
 
       // image/file
       fileSizeInByte: stats.size,

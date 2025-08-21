@@ -20,6 +20,7 @@ export class ExifResponseDto {
   exposureTime?: string | null = null;
   latitude?: number | null = null;
   longitude?: number | null = null;
+  detail?: string | null = null;
   city?: string | null = null;
   state?: string | null = null;
   country?: string | null = null;
@@ -46,6 +47,7 @@ export function mapExif(entity: Exif): ExifResponseDto {
     exposureTime: entity.exposureTime,
     latitude: entity.latitude,
     longitude: entity.longitude,
+    detail: entity.detail,
     city: entity.city,
     state: entity.state,
     country: entity.country,

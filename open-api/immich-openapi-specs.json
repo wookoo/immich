@@ -11426,6 +11426,11 @@
             "nullable": true,
             "type": "string"
           },
+          "detail": {
+            "default": null,
+            "nullable": true,
+            "type": "string"
+          },
           "exifImageHeight": {
             "default": null,
             "nullable": true,
