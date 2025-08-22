@@ -37,6 +37,7 @@ export enum AppRoute {
   SHARED_LINKS = '/shared-links',
   SEARCH = '/search',
   MAP = '/map',
+  MAP_KOREAN = '/map/korean',
   USER_SETTINGS = '/user-settings',
   MEMORY = '/memory',
   TRASH = '/trash',

@@ -25,6 +25,7 @@
     mdiMagnify,
     mdiMap,
     mdiMapOutline,
+    mdiEarth,
     mdiTagMultipleOutline,
     mdiToolbox,
     mdiToolboxOutline,
@@ -60,12 +61,21 @@
 
   {#if $featureFlags.map}
     <SideBarLink
-      title={$t('map')}
+      title={'세계지도'}
       href={resolve('/(user)/map')}
+      bind:isSelected={isMapSelected}
+      icon={isMapSelected ? mdiEarth : mdiEarth}
+    />
+  {/if}
+
+  <!-- {#if $featureFlags.mapKorean} -->
+    <SideBarLink
+      title={"국내지도"}
+      href={resolve('/(user)/map/korean')}
       bind:isSelected={isMapSelected}
       icon={isMapSelected ? mdiMap : mdiMapOutline}
     />
-  {/if}
+  <!-- {/if} -->
 
   {#if $preferences.people.enabled && $preferences.people.sidebarWeb}
     <SideBarLink
