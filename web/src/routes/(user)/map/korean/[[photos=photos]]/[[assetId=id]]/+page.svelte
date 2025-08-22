@@ -5,9 +5,15 @@
   import { getMapMarkers, type MapMarkerResponseDto } from '@immich/sdk';
   import { mapSettings } from '$lib/stores/preferences.store';
   import { DateTime, Duration } from 'luxon';
+  import { assetViewingStore } from '$lib/stores/asset-viewing.store';
+  import { navigate } from '$lib/utils/navigation';
+  import { handlePromiseError } from '$lib/utils';
+  import Portal from '$lib/components/shared-components/portal/portal.svelte';
 
-  // Vite/SvelteKit 환경변수 (브라우저에서 쓰는 값이어야 함)
-  const CLIENT_ID = import.meta.env.VITE_NAVER_MAP_ID ?? 'YOUR_NAVER_MAP_CLIENT_ID';
+
+  const CLIENT_ID = import.meta.env.VITE_NAVER_CLIENT_ID  ?? 'YOUR_NAVER_MAP_CLIENT_ID';
+
+  let { isViewing: showAssetViewer, asset: viewingAsset, setAssetId } = assetViewingStore;
 
   let mapEl: HTMLDivElement;
   let abortController: AbortController | null = null;
@@ -47,7 +53,7 @@
 
   async function loadNaverStack() {
     // 1) maps.js (반드시 ncpClientId 사용)
-    const mapsUrl = `https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=`;
+    const mapsUrl = `https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${CLIENT_ID}`;
     await appendScriptOnce(mapsUrl, () => !!window.naver?.maps);
 
     // 2) MarkerClustering.js (maps.js 이후)
@@ -96,6 +102,35 @@
     );
   }
 
+  let viewingAssets: string[] = $state([]);
+  let viewingAssetCursor = 0;
+
+  async function onViewAssets(assetIds: string[]) {
+    viewingAssets = assetIds;
+    viewingAssetCursor = 0;
+    await setAssetId(assetIds[0]);
+  }
+
+
+
+  async function navigateNext() {
+    if (viewingAssetCursor < viewingAssets.length - 1) {
+      await setAssetId(viewingAssets[++viewingAssetCursor]);
+      await navigate({ targetRoute: 'current', assetId: $viewingAsset.id });
+      return true;
+    }
+    return false;
+  }
+
+  async function navigatePrevious() {
+    if (viewingAssetCursor > 0) {
+      await setAssetId(viewingAssets[--viewingAssetCursor]);
+      await navigate({ targetRoute: 'current', assetId: $viewingAsset.id });
+      return true;
+    }
+    return false;
+  }
+
   onMount(async () => {
     try {
       // 스크립트 로드 순서 보장
@@ -137,13 +172,32 @@
             anchor: new naver.maps.Point(ICON_PX / 2, ICON_PX / 2),
           },
         });
-        m.set('thumbUrl', url); // ★ 저장
+        m.set('id', o.id); // ★ 저장
+        
+
+        naver.maps.Event.addListener(m, 'mouseover', () => {
+          const el = m.getElement();
+          if (!el) return;
+          el.style.transition = 'transform 120ms ease';
+          el.style.transformOrigin = 'center';
+          el.style.transform = 'translateZ(0) scale(1.08)';
+          el.style.zIndex = '900';
+        });
+
+        naver.maps.Event.addListener(m, 'mouseout', () => {
+          const el = m.getElement();
+          if (!el) return;
+          el.style.transform = 'scale(1)';
+          el.style.zIndex = '';
+        });
         return m;
+
+
       });
 
       // 클러스터 아이콘(HTML 마커)
       const makeIcon = (size: number) => ({
-       content: `
+        content: `
         <div style="position:relative;width:${ICON_PX}px;height:${ICON_PX}px;border-radius:12px;overflow:hidden;
             box-shadow:0 4px 12px rgba(0,0,0,.25);border:3px solid #fff">
   <img src="" alt="" draggable="false" ondragstart="return false;"
@@ -173,31 +227,52 @@
         maxZoom: Infinity, // 확대해도 계속 클러스터 유지 (필요시 임계값으로 조정)
         gridSize: 60, // 화면 기준 픽셀. 필요에 따라 60~150 조정
         icons,
-        indexGenerator: [10, 30, 50, 100],
-        disableClickZoom: false,
+        indexGenerator: [1, 2, 3],
+        disableClickZoom: true,
         stylingFunction: (clusterMarker: any, count: number) => {
           const cluster = clusterMarker.get('cluster');
           const el = clusterMarker.getElement();
           if (el) {
             const badge = el.querySelector('.badge') as HTMLDivElement;
             badge.textContent = String(count);
-            const src = cluster._clusterMember[0].thumbUrl;
-            el.querySelector("img").src = src
+            const url = `/api/assets/${cluster._clusterMember[0].id}/thumbnail`;
+            const src = url;
+            el.querySelector('img').src = src;
           }
-         
+          naver.maps.Event.addListener(clusterMarker, 'click', (e) => {
+            const ids = clusterMarker.get('cluster')._clusterMember.map(o => o.id);
+            onViewAssets(ids);
+          });
+          naver.maps.Event.addListener(clusterMarker, 'mouseover', () => {
+            const el = clusterMarker.getElement();
+            if (!el) return;
+            el.style.transition = 'transform 120ms ease';
+            el.style.transformOrigin = 'center';
+
+            el.style.transform = 'translateZ(0) scale(1.08)';
+            el.style.zIndex = 1;
+
+          });
+
+          naver.maps.Event.addListener(clusterMarker, 'mouseout', () => {
+            const el = clusterMarker.getElement();
+            if (!el) return;
+            el.style.transform = 'scale(1)';
+            el.style.zIndex = '';
+          });
         },
       });
 
       // 디버깅용: 카메라 이동 후 중심/줌 출력
       const idleListener = naver.maps.Event.addListener(map, 'idle', () => {
         const c = map.getCenter();
-        console.log('center:', c.lat(), c.lng(), 'zoom:', map.getZoom());
+        // console.log('center:', c.lat(), c.lng(), 'zoom:', map.getZoom());
       });
 
       // 개별 마커 클릭 예시
       markers.forEach((m, idx) => {
         naver.maps.Event.addListener(m, 'click', () => {
-          console.log('marker clicked:', idx);
+          onViewAssets([m.id])
         });
       });
 
@@ -208,7 +283,7 @@
         abortController?.abort();
       };
     } catch (e) {
-      console.error('Map init failed:', e);
+      // console.error('Map init failed:', e);
     }
   });
 </script>
@@ -217,4 +292,23 @@
   <UserPageLayout title={'국내지도'}>
     <div bind:this={mapEl} class="isolate h-full w-full"></div>
   </UserPageLayout>
+
+  <Portal target="body">
+    {#if $showAssetViewer}
+      {#await import('../../../../../../lib/components/asset-viewer/asset-viewer.svelte') then { default: AssetViewer }}
+        <AssetViewer
+          asset={$viewingAsset}
+          showNavigation={viewingAssets.length > 1}
+          onNext={navigateNext}
+          onPrevious={navigatePrevious}
+          onRandom={()=>{}}
+          onClose={() => {
+            assetViewingStore.showAssetViewer(false);
+            handlePromiseError(navigate({ targetRoute: 'current', assetId: null }));
+          }}
+          isShared={false}
+        />
+      {/await}
+    {/if}
+  </Portal>
 </div>
