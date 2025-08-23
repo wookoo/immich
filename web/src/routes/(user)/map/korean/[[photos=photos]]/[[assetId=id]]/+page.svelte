@@ -53,10 +53,15 @@
 
   async function loadNaverStack() {
     // 1) maps.js (반드시 ncpClientId 사용)
-    const f = await fetch("/env.json")
-    const cfg = await f.json();
+    let CLIENT_ID = import.meta.env.VITE_NAVER_CLIENT_ID ;
 
-    const mapsUrl = `https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${cfg.NAVER_CLIENT_ID}`;
+    if(!CLIENT_ID){
+      const f = await fetch("/env.json")
+      const cfg = await f.json();
+      CLIENT_ID = cfg.NAVER_CLIENT_ID
+    }
+
+    const mapsUrl = `https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${CLIENT_ID}`;
     await appendScriptOnce(mapsUrl, () => !!window.naver?.maps);
 
     // 2) MarkerClustering.js (maps.js 이후)
