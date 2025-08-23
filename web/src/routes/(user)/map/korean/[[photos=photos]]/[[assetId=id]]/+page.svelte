@@ -11,7 +11,7 @@
   import Portal from '$lib/components/shared-components/portal/portal.svelte';
 
 
-  const CLIENT_ID = import.meta.env.VITE_NAVER_CLIENT_ID  ?? 'YOUR_NAVER_MAP_CLIENT_ID';
+ // const CLIENT_ID = import.meta.env.VITE_NAVER_CLIENT_ID  ?? 'YOUR_NAVER_MAP_CLIENT_ID';
 
   let { isViewing: showAssetViewer, asset: viewingAsset, setAssetId } = assetViewingStore;
 
@@ -53,7 +53,10 @@
 
   async function loadNaverStack() {
     // 1) maps.js (반드시 ncpClientId 사용)
-    const mapsUrl = `https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${CLIENT_ID}`;
+    const f = await fetch("/env.json")
+    const cfg = await f.json();
+
+    const mapsUrl = `https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${cfg.NAVER_CLIENT_ID}`;
     await appendScriptOnce(mapsUrl, () => !!window.naver?.maps);
 
     // 2) MarkerClustering.js (maps.js 이후)

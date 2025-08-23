@@ -118,6 +118,8 @@ RUN pnpm --filter @immich/sdk --filter @immich/cli --frozen-lockfile install && 
 # prod base image
 FROM ghcr.io/immich-app/base-server-prod:202508191104@sha256:4cce4119f5555fce5e383b681e4feea31956ceadb94cafcbcbbae2c7b94a1b62
 
+
+
 WORKDIR /usr/src/app
 ENV NODE_ENV=production \
   NVIDIA_DRIVER_CAPABILITIES=all \
@@ -147,9 +149,31 @@ ENV IMMICH_SOURCE_REF=${BUILD_SOURCE_REF}
 ENV IMMICH_SOURCE_COMMIT=${BUILD_SOURCE_COMMIT}
 ENV IMMICH_SOURCE_URL=https://github.com/immich-app/immich/commit/${BUILD_SOURCE_COMMIT}
 
+
+COPY <<'EOF' /usr/local/bin/immich-entrypoint.sh
+#!/usr/bin/env bash
+set -euo pipefail
+
+# 런타임 ENV를 정적 파일로 주입
+if [ -d /build/www ]; then
+  cat > /build/www/env.json <<EORC
+{
+  "NAVER_CLIENT_ID": "${NAVER_CLIENT_ID:-}"
+}
+EORC
+fi
+
+exec start.sh
+EOF
+RUN chmod +x /usr/local/bin/immich-entrypoint.sh
+
+
+
+
+
 VOLUME /data
 EXPOSE 2283
 ENTRYPOINT ["tini", "--", "/bin/bash", "-c"]
-CMD ["start.sh"]
+CMD ["immich-entrypoint.sh"]
 
 HEALTHCHECK CMD immich-healthcheck
